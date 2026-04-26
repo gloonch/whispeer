@@ -21,6 +21,49 @@ import { runSelfTests } from "./utils/selfTests.js";
 
 runSelfTests();
 
+const initialNotifications = [
+  {
+    id: "n1",
+    type: "whisper_added",
+    title: "Neda added a whisper",
+    body: "Tea & Talk is now in Whispers.",
+    timeLabel: "2m",
+    bucket: "Today",
+    unread: true,
+    resolved: true,
+  },
+  {
+    id: "n2",
+    type: "highlight_added",
+    title: "New highlight",
+    body: "Movie night at home was kept as a highlight.",
+    timeLabel: "12m",
+    bucket: "Today",
+    unread: true,
+    resolved: true,
+  },
+  {
+    id: "n3",
+    type: "partner_request",
+    title: "Partner request",
+    body: "@luna.carter wants to become your partner.",
+    timeLabel: "1h",
+    bucket: "Earlier",
+    unread: true,
+    resolved: false,
+  },
+  {
+    id: "n4",
+    type: "whisper_done",
+    title: "Neda marked a whisper done",
+    body: "Tea & Talk is now completed.",
+    timeLabel: "Yesterday",
+    bucket: "Earlier",
+    unread: false,
+    resolved: true,
+  },
+];
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,6 +79,7 @@ export default function App() {
   const [seedTitle, setSeedTitle] = useState("");
   const [inspirationRecords, setInspirationRecords] = useState([]);
   const [publicMemoryIncrements, setPublicMemoryIncrements] = useState({});
+  const [notifications, setNotifications] = useState(initialNotifications);
   const pageMetaTimer = useRef(null);
   const inspiredKeys = useRef(new Set());
 
@@ -51,6 +95,7 @@ export default function App() {
   }, {});
   const openTodos = selectedPartnerTodos.filter((todo) => todo.status === "open");
   const doneTodos = selectedPartnerTodos.filter((todo) => todo.status === "done");
+  const hasUnreadNotifications = notifications.some((item) => item.unread);
   const publicMemories = [
     ...initialPublicMemories.map((memory) => ({
       ...memory,
@@ -75,10 +120,10 @@ export default function App() {
   const isExploreDetail = currentPage === "explore" && location.pathname !== "/explore";
   const pageMeta = {
     timeline: { title: "Timeline", subtitle: "Create intentional memories here. Highlights keep the smaller shared moments close." },
-    whispers: { title: "Whispers", subtitle: "Pick one small thing, do it together, then mark it done or keep it as a highlight." },
-    explore: { title: "Explore", subtitle: "Public memories from other couples, shared for inspiration." },
+    whispers: { title: "Whispers", subtitle: "Pick one small thing, finish it with one tap, then keep it as a highlight if it matters." },
+    explore: { title: "Explore", subtitle: "Photo-first public memories from other couples, shared for inspiration." },
     account: { title: "Account", subtitle: "Simple relationship information without adding extra noise to the product." },
-  }[currentPage] || { title: "Whispers", subtitle: "Pick one small thing, do it together, and turn it into a memory when it matters." };
+  }[currentPage] || { title: "Whispers", subtitle: "Pick one small thing, finish it with one tap, then keep it as a highlight if it matters." };
 
   function addEvent(event) {
     if (!relationshipIsWritable) return;
@@ -110,7 +155,9 @@ export default function App() {
 
   function addTodo(todo) {
     if (!relationshipIsWritable) return;
-    setTodos((prev) => [{ ...todo, partnerId: selectedPartnerId, isHighlighted: false }, ...prev]);
+    const cleanTitle = String(todo.title || "").trim();
+    if (!cleanTitle) return;
+    setTodos((prev) => [{ ...todo, title: cleanTitle, partnerId: selectedPartnerId, isHighlighted: false }, ...prev]);
     setActiveTopSheet(null);
   }
 
@@ -188,6 +235,7 @@ export default function App() {
         partnerId: selectedPartnerId,
         sourceType: "whisper",
         sourceId: todo.id,
+        sourceLabel: todo.source?.label || "From whispers",
         title: todo.title,
         minutes: todo.minutes,
         imageUrl,
@@ -239,6 +287,33 @@ export default function App() {
     pageMetaTimer.current = setTimeout(() => setActiveTopSheet((sheet) => (sheet === "meta" ? null : sheet)), 5000);
   }
 
+  function openNotifications() {
+    setNotifications((prev) => prev.map((item) => (item.unread ? { ...item, unread: false } : item)));
+    setActiveTopSheet((sheet) => (sheet === "notifications" ? null : "notifications"));
+  }
+
+  function markNotificationsRead() {
+    setNotifications((prev) => prev.map((item) => (item.unread ? { ...item, unread: false } : item)));
+  }
+
+  function respondToPartnerRequest(notificationId, decision) {
+    setNotifications((prev) => prev.map((item) => {
+      if (item.id !== notificationId || item.type !== "partner_request") return item;
+      return {
+        ...item,
+        type: "system",
+        title: decision === "accept" ? "You're connected" : "Partner request declined",
+        body: decision === "accept"
+          ? "Luna is now your partner."
+          : "The request was declined.",
+        timeLabel: "now",
+        bucket: "Today",
+        unread: false,
+        resolved: true,
+      };
+    }));
+  }
+
   function closeTopSheet() {
     if (pageMetaTimer.current) clearTimeout(pageMetaTimer.current);
     setActiveTopSheet(null);
@@ -267,8 +342,9 @@ export default function App() {
               pageMeta={pageMeta}
               onAddClick={handleHeaderAdd}
               onTitleClick={showPageMeta}
-              onNotificationsClick={() => setActiveTopSheet((sheet) => (sheet === "notifications" ? null : "notifications"))}
+              onNotificationsClick={openNotifications}
               showActions={currentPage !== "account" && currentPage !== "explore"}
+              hasUnread={hasUnreadNotifications}
             />
           ) : null}
 
@@ -366,7 +442,11 @@ export default function App() {
 
           {activeTopSheet === "notifications" ? (
             <TopSheet onClose={closeTopSheet}>
-              <NotificationsList />
+              <NotificationsList
+                notifications={notifications}
+                onRespondToRequest={respondToPartnerRequest}
+                onMarkAllRead={markNotificationsRead}
+              />
             </TopSheet>
           ) : null}
 

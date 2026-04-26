@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getEventCover, getEventCoverImage, slugLabel } from "../utils/appUtils.js";
 
 function couplesText(count) {
+  if (!count) return "New in Explore";
   return `Inspired ${count} ${count === 1 ? "couple" : "couples"}`;
 }
 
@@ -26,7 +27,7 @@ export default function ExploreDetailPage({ publicMemories, activeRelationshipId
   const tags = Object.values(memory.tags || {}).flat().slice(0, 5).map(slugLabel);
   const inspiredCount = memory.inspiredCount || 0;
   const alreadyInspired = Boolean(activeRelationshipId && inspirationRecords.some((record) => record.publicMemoryId === memory.id && record.relationshipId === activeRelationshipId));
-  const actionText = alreadyInspired ? "Added to Whispers" : activeRelationshipId ? "Try this together" : "No active relationship";
+  const actionText = alreadyInspired ? "Added to whispers" : activeRelationshipId ? "Try this together" : "No active relationship";
 
   return (
     <motion.div key="explore-detail" className="-mx-3 -my-4 min-h-[calc(100vh-5rem)] bg-[#f8f5f2] pb-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -34,7 +35,6 @@ export default function ExploreDetailPage({ publicMemories, activeRelationshipId
         <button type="button" onClick={() => navigate(-1)} className="grid h-10 w-10 place-items-center rounded-full text-2xl font-light text-slate-950" aria-label="Back">‹</button>
         <div className="min-w-0 text-center">
           <p className="truncate text-sm font-black text-slate-950">Public memory</p>
-          <p className="mt-0.5 text-xs font-black uppercase tracking-wide text-purple-600">{couplesText(inspiredCount)}</p>
         </div>
         <span aria-hidden="true" />
       </header>
@@ -44,8 +44,12 @@ export default function ExploreDetailPage({ publicMemories, activeRelationshipId
       </section>
 
       <section className="px-4 py-4">
-        {tags.length > 0 ? <p className="text-sm font-bold leading-6 text-slate-700">{tags.join(" · ")}</p> : null}
-        {alreadyInspired ? <p className="mt-3 text-xs font-bold text-slate-500">Added to Whispers</p> : null}
+        <p className="text-sm font-bold text-purple-700">{couplesText(inspiredCount)}</p>
+        {tags.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags.map((tag) => <span key={tag} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">{tag}</span>)}
+          </div>
+        ) : null}
         <button
           type="button"
           disabled={alreadyInspired || !activeRelationshipId}

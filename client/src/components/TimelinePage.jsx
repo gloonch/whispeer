@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatDate, slugLabel } from "../utils/appUtils.js";
 import Card from "./Card.jsx";
@@ -11,7 +11,7 @@ import TimelineViewSwitch from "./TimelineViewSwitch.jsx";
 
 export default function TimelinePage({ events, highlights, partners, selectedPartnerId, selectedPartner, onRemoveHighlight, onOpenMemory }) {
   const [viewMode, setViewMode] = useState("grid");
-  const [selectedHighlight, setSelectedHighlight] = useState(null);
+  const [selectedHighlightId, setSelectedHighlightId] = useState("");
   const visibleEvents = useMemo(() => events.filter((event) => !selectedPartnerId || event.partnerId === selectedPartnerId), [events, selectedPartnerId]);
   const sortedEvents = useMemo(() => [...visibleEvents].sort((a, b) => String(b.date).localeCompare(String(a.date))), [visibleEvents]);
   const sortedHighlights = useMemo(() => [...highlights].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), [highlights]);
@@ -23,10 +23,16 @@ export default function TimelinePage({ events, highlights, partners, selectedPar
       ? "This is a past relationship. Memories are read-only."
       : "";
 
+  useEffect(() => {
+    if (!selectedHighlightId) return;
+    if (sortedHighlights.some((item) => item.id === selectedHighlightId)) return;
+    setSelectedHighlightId("");
+  }, [selectedHighlightId, sortedHighlights]);
+
   return (
     <motion.div key="timeline" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
       {readOnlyText ? <Card className="mb-3 p-4 text-sm font-bold leading-6 text-slate-600">{readOnlyText}</Card> : null}
-      <HighlightsRow highlights={sortedHighlights} onSelect={setSelectedHighlight} />
+      <HighlightsRow highlights={sortedHighlights} onSelect={(highlight) => setSelectedHighlightId(highlight.id)} />
       {hasPartners && sortedEvents.length > 0 ? <TimelineViewSwitch viewMode={viewMode} onChange={setViewMode} /> : null}
       {!hasPartners ? <Card className="p-5 text-sm leading-6 text-slate-500">Add a partner first, then your shared timeline will appear here.</Card> : sortedEvents.length === 0 ? <Card className="p-5 text-sm leading-6 text-slate-500">No memories with this partner yet. Add the first one.</Card> : viewMode === "grid" ? <TimelineGridView events={sortedEvents} onOpenMemory={onOpenMemory} /> : (
         <div className="relative space-y-3 before:absolute before:left-3 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-slate-200 sm:space-y-4 sm:before:left-4">
@@ -54,14 +60,16 @@ export default function TimelinePage({ events, highlights, partners, selectedPar
         </div>
       )}
       <AnimatePresence>
-        {selectedHighlight ? (
+        {selectedHighlightId ? (
           <HighlightDetailSheet
-            highlight={selectedHighlight}
+            highlights={sortedHighlights}
+            selectedHighlightId={selectedHighlightId}
             readOnly={readOnly}
-            onClose={() => setSelectedHighlight(null)}
+            onClose={() => setSelectedHighlightId("")}
+            onSelect={setSelectedHighlightId}
             onRemove={(highlightId) => {
               onRemoveHighlight(highlightId);
-              setSelectedHighlight(null);
+              setSelectedHighlightId("");
             }}
           />
         ) : null}

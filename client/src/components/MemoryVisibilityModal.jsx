@@ -32,8 +32,8 @@ export default function MemoryVisibilityModal({ memory, onClose, onConfirm }) {
             <h3 className="text-lg font-black text-slate-950">{isPublic ? "Make this memory private?" : "Make this memory public?"}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
               {isPublic
-                ? "This memory will be removed from Explore."
-                : "Only the selected photo and basic tags will appear in Explore. Notes and partner details stay private."}
+                ? "It will be removed from Explore. Couples who already added the idea to their whispers will keep their own whisper."
+                : "Only the photo, tags, and idea will appear in Explore. Your note, partner details, and private relationship data stay hidden."}
             </p>
             {tagText ? <p className="mt-3 truncate text-xs font-black uppercase tracking-wide text-slate-400">{tagText}</p> : null}
             <div className="mt-4 grid grid-cols-2 gap-2">

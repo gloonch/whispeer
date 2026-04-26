@@ -20,7 +20,7 @@ export default function TimelineGridView({ events, onOpenMemory }) {
           >
             {imageUrl ? <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className={`absolute inset-0 ${getEventCover(event)}`} />}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/35 via-slate-950/0 to-white/10 opacity-80 transition group-hover:opacity-95" />
-            {event.visibility === "public" && event.inspiredCount > 0 ? <span className="absolute bottom-2 right-2 text-[11px] font-black text-white drop-shadow-[0_1px_3px_rgba(15,23,42,0.85)]">{event.inspiredCount}</span> : null}
+            {event.visibility === "public" ? <span className="absolute bottom-2 right-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-slate-700">Public</span> : null}
           </motion.button>
         );
       })}

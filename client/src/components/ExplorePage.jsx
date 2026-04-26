@@ -16,7 +16,6 @@ function PublicMemoryTile({ memory, index, onSelect }) {
       aria-label="Open public memory"
     >
       {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <div className={`h-full w-full ${memory.coverClass || getEventCover(memory)}`} />}
-      {memory.inspiredCount > 0 ? <span className="absolute bottom-2 right-2 text-[11px] font-black text-white drop-shadow-[0_1px_3px_rgba(15,23,42,0.85)]">{memory.inspiredCount}</span> : null}
     </motion.button>
   );
 }
