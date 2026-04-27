@@ -18,3 +18,36 @@ textarea,
 select {
   font: inherit;
 }
+
+@keyframes landingMarqueeGroup {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(calc(-100% - 0.875rem), 0, 0);
+  }
+}
+
+.landing-marquee {
+  display: flex;
+  width: max-content;
+}
+
+.landing-marquee-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.875rem;
+  min-width: max-content;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  animation: landingMarqueeGroup 40s linear infinite;
+}
+
+.landing-marquee-group + .landing-marquee-group {
+  margin-left: 0.875rem;
+}
+
+.landing-marquee-group:nth-child(2) {
+  animation-delay: -20s;
+}

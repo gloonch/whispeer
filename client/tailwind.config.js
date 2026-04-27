@@ -3,11 +3,11 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     screens: {
-      sm: "9999px",
-      md: "10000px",
-      lg: "10001px",
-      xl: "10002px",
-      "2xl": "10003px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
     },
     extend: {},
   },

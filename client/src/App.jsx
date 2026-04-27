@@ -6,6 +6,7 @@ import AddEventForm from "./components/AddEventForm.jsx";
 import AddHighlightModal from "./components/AddHighlightModal.jsx";
 import AddTodoForm from "./components/AddTodoForm.jsx";
 import AppHeader from "./components/AppHeader.jsx";
+import LandingPage from "./components/LandingPage.jsx";
 import ExploreDetailPage from "./components/ExploreDetailPage.jsx";
 import ExplorePage from "./components/ExplorePage.jsx";
 import MemoryDetailPage from "./components/MemoryDetailPage.jsx";
@@ -116,6 +117,7 @@ export default function App() {
       })),
   ].sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
 
+  const isLandingRoute = location.pathname === "/";
   const currentPage = location.pathname.split("/")[1] || "whispers";
   const isExploreDetail = currentPage === "explore" && location.pathname !== "/explore";
   const pageMeta = {
@@ -331,6 +333,10 @@ export default function App() {
       return { ...partner, status, endedAt: status === "ended" ? todayISO() : partner.endedAt };
     }));
     if (status === "active") setSelectedPartnerId(partnerId);
+  }
+
+  if (isLandingRoute) {
+    return <LandingPage />;
   }
 
   return (
