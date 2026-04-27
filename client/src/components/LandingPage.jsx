@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -52,6 +52,64 @@ const landingPhotos = {
       inspired: 27,
     },
   ],
+};
+
+const heroWhispersPreview = {
+  openTodos: [
+    {
+      id: "hero_open_1",
+      title: "Try a new dessert",
+      minutes: 20,
+      status: "open",
+      isHighlighted: false,
+      createdAt: "2026-04-27",
+    },
+    {
+      id: "hero_open_2",
+      title: "Take a 20 min walk",
+      minutes: 20,
+      status: "open",
+      isHighlighted: false,
+      createdAt: "2026-04-27",
+    },
+    {
+      id: "hero_open_3",
+      title: "Send one old photo",
+      minutes: 8,
+      status: "open",
+      isHighlighted: false,
+      source: {
+        type: "public_memory",
+        label: "Inspired from Explore",
+      },
+      createdAt: "2026-04-27",
+    },
+  ],
+  doneTodos: [
+    {
+      id: "hero_done_1",
+      title: "Voice note before sleep",
+      minutes: 5,
+      status: "done",
+      isHighlighted: true,
+      createdAt: "2026-04-25",
+      doneAt: "2026-04-26",
+    },
+    {
+      id: "hero_done_2",
+      title: "Coffee after rain",
+      minutes: 30,
+      status: "done",
+      isHighlighted: false,
+      source: {
+        type: "public_memory",
+        label: "Inspired from Explore",
+      },
+      createdAt: "2026-04-23",
+      doneAt: "2026-04-24",
+    },
+  ],
+  selectedPartner: { id: "hero_partner", status: "active" },
 };
 
 const fadeUp = {
@@ -187,98 +245,222 @@ function ScenicImage({ src, alt, className = "", loading = "lazy" }) {
   );
 }
 
+function AnchoredDottedArrow({ containerRef, startRef, endRef, active = true }) {
+  const [geometry, setGeometry] = useState(null);
+
+  useEffect(() => {
+    if (!active) {
+      setGeometry(null);
+      return undefined;
+    }
+
+    let rafId = 0;
+    let resizeObserver = null;
+
+    const measure = () => {
+      rafId = 0;
+
+      const container = containerRef.current;
+      const start = startRef.current;
+      const end = endRef.current;
+      if (!container || !start || !end) {
+        setGeometry(null);
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const startRect = start.getBoundingClientRect();
+      const endRect = end.getBoundingClientRect();
+      if (!containerRect.width || !containerRect.height) {
+        setGeometry(null);
+        return;
+      }
+
+      const startX = startRect.left + startRect.width / 2 - containerRect.left;
+      const startY = startRect.top + startRect.height / 2 - containerRect.top;
+      const endX = endRect.right - containerRect.left + 4;
+      const endY = endRect.top + endRect.height / 2 - containerRect.top;
+
+      const chord = Math.hypot(endX - startX, endY - startY);
+      if (chord < 1) {
+        setGeometry(null);
+        return;
+      }
+      const radius = chord / 2;
+      const sweepFlag = endX >= startX ? 1 : 0;
+      const path = `M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX} ${endY}`;
+
+      setGeometry((previous) => {
+        if (
+          previous &&
+          previous.path === path &&
+          previous.width === containerRect.width &&
+          previous.height === containerRect.height
+        ) {
+          return previous;
+        }
+        return {
+          path,
+          width: containerRect.width,
+          height: containerRect.height,
+        };
+      });
+    };
+
+    const scheduleMeasure = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+    window.addEventListener("resize", scheduleMeasure, { passive: true });
+    window.addEventListener("scroll", scheduleMeasure, true);
+
+    if (typeof window.ResizeObserver !== "undefined") {
+      resizeObserver = new window.ResizeObserver(() => scheduleMeasure());
+      [containerRef.current, startRef.current, endRef.current].forEach((element) => {
+        if (element) resizeObserver.observe(element);
+      });
+    }
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [active, containerRef, startRef, endRef]);
+
+  if (!geometry) return null;
+
+  const strokeColor = "rgba(80, 140, 255, 0.35)";
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[90] overflow-visible">
+      <svg
+        className="h-full w-full overflow-visible"
+        viewBox={`0 0 ${Math.max(1, geometry.width)} ${Math.max(1, geometry.height)}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          d={geometry.path}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="1 9"
+        />
+      </svg>
+    </div>
+  );
+}
+
 function PhoneMockup() {
-  const memories = ["Coffee after rain", "Small rooftop plan", "Sunday playlist"];
+  const [showInspiredWhisper, setShowInspiredWhisper] = useState(false);
+  const phoneShellRef = useRef(null);
+  const tryButtonRef = useRef(null);
+  const whisperCardRef = useRef(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowInspiredWhisper(true), 1400);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <motion.div
+      ref={phoneShellRef}
       className="relative mx-auto h-[620px] w-[310px] rounded-[3.2rem] border border-slate-950/10 bg-slate-950 p-3 shadow-[0_40px_120px_rgba(15,23,42,0.35)]"
       initial={{ opacity: 0, y: 28, rotate: 1.5 }}
       animate={{ opacity: 1, y: 0, rotate: 0 }}
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
     >
-      <div className="absolute left-1/2 top-3 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-slate-950" />
-      <div className="relative h-full overflow-hidden rounded-[2.55rem] bg-[#fbf7ef]">
-        <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_20%_20%,rgba(244,114,182,.45),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(96,165,250,.42),transparent_38%),radial-gradient(circle_at_50%_70%,rgba(168,85,247,.26),transparent_45%)]" />
-        <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-12">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <BrandMark className="h-8 w-8" alt="Whispeer" />
-              <div>
-                <p className="text-xs font-medium text-slate-500">Whispeer</p>
-                <h3 className="text-2xl font-semibold tracking-tight text-slate-950">For two</h3>
+      <AnimatePresence>
+        {showInspiredWhisper ? (
+          <motion.div
+            ref={whisperCardRef}
+            className="absolute -left-6 top-[392px] z-40 w-[248px] rounded-[1.7rem] border border-white/90 bg-[#f3f4f6]/98 p-4 shadow-[0_22px_45px_rgba(15,23,42,0.2)] backdrop-blur-xl md:-left-7 md:top-[374px] md:w-[278px] md:p-5"
+            initial={{ opacity: 0, x: 88, y: 18, scale: 0.86 }}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, y: 10, scale: 0.94 }}
+            transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h4 className="truncate text-base font-semibold leading-5 text-slate-950 md:text-[17px] md:leading-6">Sunset picnic pause</h4>
+                <p className="mt-1 text-[13px] text-slate-500 md:text-sm">20 min · quality attention</p>
+                <p className="mt-1 text-[11px] font-semibold text-violet-700">Inspired from Explore</p>
               </div>
-            </div>
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-white/70 shadow-sm backdrop-blur-xl">
-              <Icon name="sparkles" className="h-4 w-4 text-slate-950" />
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-950">Today’s whispers</p>
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-slate-950 text-white">
-                <Icon name="plus" className="h-4 w-4" />
-              </div>
-            </div>
-            {[
-              ["Try a new dessert", "Tiny plan"],
-              ["Take a 20 min walk", "Quiet ritual"],
-              ["Send one old photo", "Memory seed"],
-            ].map(([title, tag], index) => (
-              <motion.div
-                key={title}
-                className="mb-3 rounded-2xl border border-slate-950/5 bg-white p-3"
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.55 + index * 0.13 }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100">
-                    <Icon name="check" className="h-3.5 w-3.5 text-slate-700" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-slate-950">{title}</p>
-                    <p className="text-[11px] text-slate-500">{tag}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="mt-4 rounded-[2rem] border border-white/70 bg-white/55 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-950">Timeline</p>
-              <span className="rounded-full bg-slate-950 px-3 py-1 text-[11px] font-medium text-white">Private</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {memories.map((memory, index) => (
-                <motion.div
-                  key={memory}
-                  className="aspect-square rounded-2xl bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,.9),transparent_35%),linear-gradient(135deg,rgba(244,114,182,.55),rgba(96,165,250,.45),rgba(168,85,247,.45))] p-2"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.9 + index * 0.12 }}
+              <div className="flex shrink-0 items-center gap-2">
+                <button type="button" className="grid h-8 w-8 place-items-center rounded-full text-lg leading-none text-slate-500" aria-label="More actions">
+                  ...
+                </button>
+                <button
+                  type="button"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-950/15 md:h-10 md:w-10"
+                  aria-label="Mark inspired whisper done"
                 >
-                  <p className="line-clamp-2 text-[10px] font-medium leading-tight text-slate-900/80">{memory}</p>
-                </motion.div>
+                  <Icon name="check" className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mt-3.5 h-9 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950 md:h-9"
+            >
+              Keep as highlight
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="absolute left-1/2 top-5 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-slate-950" />
+      <div className="relative h-full overflow-hidden rounded-[2.55rem] bg-[#f8f5f2]">
+        <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_20%_20%,rgba(244,114,182,.36),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(96,165,250,.32),transparent_38%),radial-gradient(circle_at_50%_70%,rgba(168,85,247,.2),transparent_45%)]" />
+        <motion.div
+          className="absolute inset-x-4 top-12 z-30 overflow-hidden rounded-[1.4rem] border border-white/75 bg-[#f8f5f2]/96 shadow-[0_18px_44px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+          initial={{ opacity: 0, scale: 0.94, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.62, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="flex items-center justify-between border-b border-slate-950/6 px-3 py-2">
+            <span className="text-sm font-medium leading-none text-slate-700">‹</span>
+            <p className="text-[11px] font-semibold text-slate-950">Public memory</p>
+            <span className="w-3" />
+          </div>
+          <div className="relative h-[118px]">
+            <ScenicImage src={landingPhotos.explore[3].src} alt="Sunset picnic pause memory" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/10 to-transparent" />
+            <p className="absolute bottom-2.5 left-3 text-sm font-semibold text-white drop-shadow">Sunset picnic pause</p>
+          </div>
+          <div className="space-y-2 px-3 pb-3 pt-2.5">
+            <p className="text-xs font-semibold leading-tight text-violet-700">Inspired 24 couples</p>
+            <div className="flex flex-nowrap gap-1 overflow-hidden">
+              {["movie night", "home", "cozy", "just us"].map((tag) => (
+                <span key={tag} className="whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-600">
+                  {tag}
+                </span>
               ))}
             </div>
+            <button
+              type="button"
+              ref={tryButtonRef}
+              onClick={() => setShowInspiredWhisper(true)}
+              className="w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] transition hover:bg-slate-800"
+            >
+              Try this together
+            </button>
           </div>
+        </motion.div>
 
-          <div className="mt-auto grid grid-cols-4 rounded-[1.65rem] border border-slate-950/5 bg-white/80 p-1 shadow-sm backdrop-blur-xl">
-            {["Timeline", "Whispers", "Explore", "Account"].map((item) => (
-              <div
-                key={item}
-                className={`rounded-[1.2rem] px-2 py-2 text-center text-[10px] font-medium ${item === "Whispers" ? "bg-slate-950 text-white" : "text-slate-500"
-                  }`}
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+      <AnchoredDottedArrow
+        containerRef={phoneShellRef}
+        startRef={tryButtonRef}
+        endRef={whisperCardRef}
+        active={showInspiredWhisper}
+      />
     </motion.div>
   );
 }
@@ -493,8 +675,8 @@ export default function LandingPage() {
                   href={`#${item.id}`}
                   onClick={(event) => scrollToSection(event, item.id)}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${selected
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-white/70 hover:text-slate-950"
+                    ? "bg-slate-950 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white/70 hover:text-slate-950"
                     }`}
                 >
                   {item.label}
